@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : SPI.c
-  * Date               : 16/06/2015 12:24:04
+  * Date               : 17/06/2015 15:06:04
   * Description        : This file provides code for the configuration
   *                      of the SPI instances.
   ******************************************************************************
@@ -142,7 +142,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     __HAL_LINKDMA(hspi,hdmatx,hdma_spi1_tx);
 
     /* Peripheral interrupt init*/
-    HAL_NVIC_SetPriority(SPI1_IRQn, 0, 15);
+    HAL_NVIC_SetPriority(SPI1_IRQn, 0, 9);
     HAL_NVIC_EnableIRQ(SPI1_IRQn);
   /* USER CODE BEGIN SPI1_MspInit 1 */
 

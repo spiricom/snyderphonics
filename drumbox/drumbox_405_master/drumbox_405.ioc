@@ -1,5 +1,5 @@
 #MicroXplorer Configuration settings - do not modify
-#Tue Jun 16 12:24:02 EDT 2015
+#Wed Jun 17 15:06:02 EDT 2015
 ADC3.Channel-1\#ChannelRegularConversion=ADC_CHANNEL_3
 ADC3.IPParameters=Channel-1\#ChannelRegularConversion,NbrOfConversion,Rank-1\#ChannelRegularConversion
 ADC3.NbrOfConversion=2
@@ -178,12 +178,12 @@ NVIC.DebugMonitor_IRQn=true\:0\:12\:true
 NVIC.HASH_RNG_IRQn=true\:0\:15\:true
 NVIC.I2C1_ER_IRQn=true\:0\:15\:true
 NVIC.I2C1_EV_IRQn=true\:0\:13\:true
-NVIC.MemoryManagement_IRQn=true\:0\:9\:true
+NVIC.MemoryManagement_IRQn=true\:0\:11\:true
 NVIC.NonMaskableInt_IRQn=true\:0\:0\:true
 NVIC.OTG_FS_IRQn=true\:0\:15\:true
 NVIC.PriorityGroup=NVIC_PRIORITYGROUP_0
 NVIC.RCC_IRQn=true\:0\:14\:true
-NVIC.SPI1_IRQn=true\:0\:15\:true
+NVIC.SPI1_IRQn=true\:0\:9\:true
 NVIC.SPI2_IRQn=true\:0\:15\:true
 NVIC.SPI3_IRQn=true\:0\:6\:false
 NVIC.SysTick_IRQn=true\:0\:13\:true
@@ -358,7 +358,7 @@ ProjectManager.LibraryCopy=0
 ProjectManager.ProjectBuild=false
 ProjectManager.ProjectFileName=drumbox_405.ioc
 ProjectManager.ProjectName=drumbox_405
-ProjectManager.TargetToolchain=MDK-ARM 4.73
+ProjectManager.TargetToolchain=MDK-ARM V4
 ProjectManager.ToolChainLocation=
 RCC.48MHZClocksFreq_Value=48000000
 RCC.AHBFreq_Value=168000000
@@ -377,7 +377,7 @@ RCC.HSE_VALUE=8000000
 RCC.HSI_VALUE=16000000
 RCC.I2SClockSource=I2S_CLOCK_EXTERNAL
 RCC.I2SClocksFreq_Value=12288000
-RCC.IPParameters=HCLKFreq_Value,SYSCLKFreq_VALUE,I2SClocksFreq_Value,PLLCLKFreq_Value,FamilyName,RTCHSEDivFreq_Value,APB2CLKDivider,I2SClockSource,RTCFreq_Value,LSE_VALUE,SYSCLKSource,MCO2PinFreq_Value,CortexFreq_Value,FCLKCortexFreq_Value,APB1CLKDivider,APB2Freq_Value,VCOI2SOutputFreq_Value,PLLN,APB2TimFreq_Value,HSE_VALUE,PLLM,HSI_VALUE,PLLQ,PLLSource,VcooutputI2S,APB1TimFreq_Value,APB1Freq_Value,48MHZClocksFreq_Value,AHBFreq_Value,LSI_VALUE,VCOInputFreq_Value,EthernetFreq_Value,VCOOutputFreq_Value
+RCC.IPParameters=HCLKFreq_Value,SYSCLKFreq_VALUE,I2SClocksFreq_Value,FamilyName,PLLCLKFreq_Value,APB2CLKDivider,RTCHSEDivFreq_Value,I2SClockSource,LSE_VALUE,RTCFreq_Value,SYSCLKSource,MCO2PinFreq_Value,CortexFreq_Value,APB1CLKDivider,FCLKCortexFreq_Value,APB2Freq_Value,VCOI2SOutputFreq_Value,PLLN,APB2TimFreq_Value,HSE_VALUE,PLLM,HSI_VALUE,PLLQ,PLLSource,VcooutputI2S,APB1Freq_Value,APB1TimFreq_Value,48MHZClocksFreq_Value,LSI_VALUE,AHBFreq_Value,VCOInputFreq_Value,VCOOutputFreq_Value,EthernetFreq_Value
 RCC.LSE_VALUE=32768
 RCC.LSI_VALUE=32000
 RCC.MCO2PinFreq_Value=168000000

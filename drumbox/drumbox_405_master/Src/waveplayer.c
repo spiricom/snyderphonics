@@ -201,9 +201,11 @@ void changePhaseInc(float freq)
 void StartAudio(void)
 { 
 
-	
+	int16_t dummy1 = 0;
+	uint16_t dummy2 = 0;	
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET); 
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET); // ADC CS pin goes high to make sure it's not selected
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET); // Other IC CS pin goes high to stop conversion
 	HAL_Delay(100);
 	//HAL_Delay(100);
 	//HAL_Delay(100);
@@ -222,7 +224,9 @@ void StartAudio(void)
 	initScalars();
 	// time to set up the I2S driver to send audio data to the codec (and retrieve input as well)	
 	myStatus = HAL_I2SEx_TransmitReceive_DMA(&hi2s3, (uint16_t*)&Send_Buffer[0], (uint16_t*)&Receive_Buffer[0], AUDIO_BUFFER_SIZE);
-	ADC_Read();
+ readAndWriteOtherChip(dummy1, dummy2);
+	//ADC_Read();
+
   while(1)
 	{
 		//if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_SET)
@@ -288,11 +292,7 @@ void fillBufferWithInputProcess(uint8_t buffer_offset)
 {
 			uint16_t i = 0;
 			int16_t current_sample = 0;   
-	int16_t dummy1 = 0;
-  uint16_t dummy2 = 0;	
-      //OtherICBufferIndexNum = 0;
-	    //start_Other_IC_Communication();
-			//readAndWriteOtherChip(dummy1, dummy2);
+	   
 	
 			if(buffer_offset == 0)
       {
@@ -878,7 +878,7 @@ void Write7SegWave(uint8_t value)
 
 // 
 // make explicit send to IC inside readandwrite
-// program other chip to recieve 2 8-bit bytes and send them right back
+// program other chip to recieve 4 8-bit bytes and send them right back
 
 
 uint16_t main_counter = 0;
@@ -889,10 +889,22 @@ int16_t prevcounterOut = 0;
 uint8_t mycounter = 0;
 uint8_t stopME = 0;
 
+
+void pullUpOtherChipCS(void)
+{
+	static HAL_SPI_StateTypeDef spiState;
+  spiState	= HAL_SPI_GetState(&hspi1);
+	while(spiState != HAL_SPI_STATE_READY)
+	{
+		spiState	= HAL_SPI_GetState(&hspi1);
+	}
+	
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET); // Other_IC_CS pin goes high to end conversion
+}
+
+
 int16_t readAndWriteOtherChip(int16_t Audio_In, uint16_t Buffer_Index)
 {
-  
-	
 	/*
 	for (int i = 0; i < 4; i++)
 	{
@@ -900,22 +912,21 @@ int16_t readAndWriteOtherChip(int16_t Audio_In, uint16_t Buffer_Index)
 		mycounter++;
 	}
 */
-  if (stopME == 0)
-	{
-		adc_1 = (int16_t) (ADC_values[0] >> 4);
-		WRITE_INT16_AS_BYTES(0,adc_1);
+
+		adc_1 = (int16_t) (ADC_values[0]);
+		WRITE_INT16_AS_BYTES(0,mycounter16);
 		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET); // Other_IC_CS pin goes low to start conversion
-		HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)IC_tx, (uint8_t *)IC_rx, IC_BUFFER_SIZE, TIMEOUT);
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET); // Other_IC_CS pin goes high to end conversion
-		mycounter16In = READ_BYTES_AS_INT16(0);
-		Write7SegWave(mycounter16In / 256);
+		HAL_SPI_TransmitReceive_IT(&hspi1, (uint8_t *)IC_tx, (uint8_t *)IC_rx, IC_BUFFER_SIZE);
+		mycounter16In = READ_BYTES_AS_INT16(2);
+	  mycounter16In = READ_BYTES_AS_INT16(0);
+		Write7SegWave(mycounter16In >> 4);
+		
 		if (mycounter16In != prevcounterOut)
 		{
 			//stopME = 1;
 		}
-		prevcounterOut = mycounter16;
+		prevcounterOut = mycounter16; 
 		mycounter16++;
-	}
 	return 0;
 	
 	//mycounter16++;
@@ -1004,12 +1015,14 @@ float READ_BYTES_AS_FLOAT16(uint8_t byteNum) {
 
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
 { 
-		fillBufferWithInputProcess(1);
+	//pullUpOtherChipCS();	
+	fillBufferWithInputProcess(1);
 }
 
 void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
 {
-    fillBufferWithInputProcess(0);
+  //pullUpOtherChipCS();	  
+	fillBufferWithInputProcess(0);
 }
 
 void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s)
@@ -1050,10 +1063,19 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 	//if it's SPI1, that's the other stm32f4 IC, ready for new data.
 	if(hspi == &hspi1)
 	{
+		int16_t dummy1 = 0;
+     uint16_t dummy2 = 0;	
 		//HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)IC_tx, (uint8_t *)IC_rx, IC_BUFFER_SIZE, IC_TIMEOUT);
 		//nothing should be necessary, since the buffer should be circular
 		//HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)IC_tx, (uint8_t *)IC_rx, IC_BUFFER_SIZE);
 		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET); // Other IC CS pin goes high to stop conversion
+    for(int i = 0; i < 250; i++)
+		{
+			;
+		}
+      //OtherICBufferIndexNum = 0;
+	    //start_Other_IC_Communication();
+		readAndWriteOtherChip(dummy1, dummy2);
 		//for (int i = 0; i < HALF_IC_BUFFER_SIZE; i++)
 		//{
 		//	IC_tx[i + HALF_IC_BUFFER_SIZE] = ICbufferTx[i + HALF_IC_BUFFER_SIZE];
@@ -1108,7 +1130,7 @@ void ADC_Read(void)
 		knobnum = ADC_in[0] >> 4;
 		knobval12bit = (ADC_in[1] | ((ADC_in[0] & 15) << 8));
 		ADC_values[knobnum] = knobval12bit;
-	  Write7SegWave((uint8_t)(ADC_values[0] >> 5));
+	  //Write7SegWave((uint8_t)(ADC_values[0] >> 5));
 		whichKnob++;
 		if (whichKnob > 5)
 		{
