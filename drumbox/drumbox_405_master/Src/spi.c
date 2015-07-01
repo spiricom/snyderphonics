@@ -1,7 +1,6 @@
 /**
   ******************************************************************************
   * File Name          : SPI.c
-  * Date               : 17/06/2015 15:06:04
   * Description        : This file provides code for the configuration
   *                      of the SPI instances.
   ******************************************************************************
@@ -65,6 +64,7 @@ void MX_SPI1_Init(void)
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLED;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLED;
+  hspi1.Init.CRCPolynomial = 10;
   HAL_SPI_Init(&hspi1);
 
 }
@@ -83,6 +83,7 @@ void MX_SPI2_Init(void)
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLED;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLED;
+  hspi2.Init.CRCPolynomial = 10;
   HAL_SPI_Init(&hspi2);
 
 }
@@ -120,8 +121,8 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     hdma_spi1_rx.Init.MemInc = DMA_MINC_ENABLE;
     hdma_spi1_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_spi1_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-    hdma_spi1_rx.Init.Mode = DMA_NORMAL;
-    hdma_spi1_rx.Init.Priority = DMA_PRIORITY_HIGH;
+    hdma_spi1_rx.Init.Mode = DMA_CIRCULAR;
+    hdma_spi1_rx.Init.Priority = DMA_PRIORITY_VERY_HIGH;
     hdma_spi1_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
     HAL_DMA_Init(&hdma_spi1_rx);
 
@@ -134,8 +135,8 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     hdma_spi1_tx.Init.MemInc = DMA_MINC_ENABLE;
     hdma_spi1_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_spi1_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-    hdma_spi1_tx.Init.Mode = DMA_NORMAL;
-    hdma_spi1_tx.Init.Priority = DMA_PRIORITY_HIGH;
+    hdma_spi1_tx.Init.Mode = DMA_CIRCULAR;
+    hdma_spi1_tx.Init.Priority = DMA_PRIORITY_VERY_HIGH;
     hdma_spi1_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
     HAL_DMA_Init(&hdma_spi1_tx);
 
@@ -164,14 +165,14 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = GPIO_PIN_10;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 

@@ -1,7 +1,6 @@
 /**
   ******************************************************************************
   * File Name          : ADC.c
-  * Date               : 17/06/2015 15:06:03
   * Description        : This file provides code for the configuration
   *                      of the ADC instances.
   ******************************************************************************
@@ -52,7 +51,7 @@ void MX_ADC3_Init(void)
     /**Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
     */
   hadc3.Instance = ADC3;
-  hadc3.Init.ClockPrescaler = ADC_CLOCKPRESCALER_PCLK_DIV2;
+  hadc3.Init.ClockPrescaler = ADC_CLOCKPRESCALER_PCLK_DIV4;
   hadc3.Init.Resolution = ADC_RESOLUTION12b;
   hadc3.Init.ScanConvMode = DISABLE;
   hadc3.Init.ContinuousConvMode = DISABLE;

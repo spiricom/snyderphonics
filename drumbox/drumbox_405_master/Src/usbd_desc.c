@@ -1,7 +1,6 @@
 /**
   ******************************************************************************
   * @file           : usbd_desc.c
-  * @date           : 17/06/2015 15:06:05  
   * @version        : v1.0_Cube
   * @brief          : This file implements the USB Device descriptors
   ******************************************************************************
@@ -37,6 +36,7 @@
 #include "usbd_core.h"
 #include "usbd_desc.h"
 #include "usbd_conf.h"
+
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
   */
@@ -61,10 +61,13 @@
 #define USBD_MANUFACTURER_STRING     "STMicroelectronics"
 #define USBD_PID_FS     22336
 #define USBD_PRODUCT_STRING_FS     "STM32 Virtual ComPort"
+/* USER CODE BEGIN SERIALNUMBER_STRING_FS */
 #define USBD_SERIALNUMBER_STRING_FS     "00000000001A"
+/* USER CODE END SERIALNUMBER_STRING_FS */
 #define USBD_CONFIGURATION_STRING_FS     "CDC Config"
 #define USBD_INTERFACE_STRING_FS     "CDC Interface"
-#define  USB_SIZ_BOS_DESC            0x0C
+
+#define USB_SIZ_BOS_DESC            0x0C
 
 /**
   * @}
@@ -124,7 +127,7 @@ __ALIGN_BEGIN uint8_t USBD_FS_DeviceDesc[USB_LEN_DEV_DESC] __ALIGN_END =
                                                resume test of USBCV3.0*/
 #else  
     0x00,                       /* bcdUSB */
-#endif  
+#endif
     0x02,
     0x00,                       /*bDeviceClass*/
     0x00,                       /*bDeviceSubClass*/
@@ -315,7 +318,6 @@ uint8_t *  USBD_FS_InterfaceStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *l
   }
   return USBD_StrDesc;  
 }
-
 #if (USBD_LPM_ENABLED == 1)
 /**
   * @brief  USBD_FS_USR_BOSDescriptor 

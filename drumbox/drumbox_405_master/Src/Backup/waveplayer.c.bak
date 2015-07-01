@@ -15,8 +15,9 @@ This is the Snyderphonics DrumBox synthesis code.
 #include "math.h"
 #include "main.h"
 #include "spi.h"
+#include "dma.h"
 
-#define AUDIO_BUFFER_SIZE             4  //four is the lowest number that makes sense -- 2 samples for each computed sample (L/R), and then half buffer fills
+#define AUDIO_BUFFER_SIZE    4  //four is the lowest number that makes sense -- 2 samples for each computed sample (L/R), and then half buffer fills
 #define HALF_BUFFER_SIZE      (AUDIO_BUFFER_SIZE/2)
 #define IC_BUFFER_SIZE 4
 #define HALF_IC_BUFFER_SIZE (IC_BUFFER_SIZE / 2)
@@ -27,6 +28,23 @@ This is the Snyderphonics DrumBox synthesis code.
 #define ADC_FEEDBACK 0
 #define ADC_FREQ 1
 #define ADC_DELAY 2
+
+
+/* External variables --------------------------------------------------------*/
+extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
+extern ADC_HandleTypeDef hadc3;
+extern DMA_HandleTypeDef hdma_i2c1_rx;
+extern I2C_HandleTypeDef hi2c1;
+extern DMA_HandleTypeDef hdma_spi3_tx;
+extern DMA_HandleTypeDef hdma_i2s3_ext_rx;
+extern I2S_HandleTypeDef hi2s3;
+extern RNG_HandleTypeDef hrng;
+extern DMA_HandleTypeDef hdma_spi1_rx;
+extern DMA_HandleTypeDef hdma_spi1_tx;
+extern DMA_HandleTypeDef hdma_spi2_tx;
+extern DMA_HandleTypeDef hdma_spi2_rx;
+extern SPI_HandleTypeDef hspi1;
+extern SPI_HandleTypeDef hspi2;
 
 uint16_t i2cDataSize2 = 2;
 uint8_t myTouchpad[2];
@@ -197,12 +215,16 @@ void changePhaseInc(float freq)
 	phaseInc = (freq / SAMPLE_RATE);
 }
 
+uint16_t mess = 0;
+	static uint32_t spi1tx;
+	static uint32_t spi1rx;
 
 void StartAudio(void)
 { 
 
 	int16_t dummy1 = 0;
 	uint16_t dummy2 = 0;	
+
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET); 
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET); // ADC CS pin goes high to make sure it's not selected
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET); // Other IC CS pin goes high to stop conversion
@@ -224,15 +246,19 @@ void StartAudio(void)
 	initScalars();
 	// time to set up the I2S driver to send audio data to the codec (and retrieve input as well)	
 	myStatus = HAL_I2SEx_TransmitReceive_DMA(&hi2s3, (uint16_t*)&Send_Buffer[0], (uint16_t*)&Receive_Buffer[0], AUDIO_BUFFER_SIZE);
-	ADC_Read();
-	readAndWriteOtherChip(dummy1, dummy2);
+  readAndWriteOtherChip(dummy1, dummy2);
+	//ADC_Read();
+
   while(1)
 	{
 		//if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_SET)
 		//{
 			//getXY_Touchpad();
 			//Write7SegWave((myTouchpad[0] / 4));
-		  
+		  spi1tx = HAL_DMA_GetError(&hdma_spi1_tx);
+		  mess = spi1tx;
+		  spi1rx = HAL_DMA_GetError(&hdma_spi1_rx);
+		  mess = spi1rx;
 			//ADC_Read();
 		//}
 	}
@@ -911,23 +937,15 @@ int16_t readAndWriteOtherChip(int16_t Audio_In, uint16_t Buffer_Index)
 		mycounter++;
 	}
 */
-if ((stopME == 0) && (HAL_SPI_GetState(&hspi1) == HAL_SPI_STATE_READY))
+if (stopME == 0)
 {
 		adc_1 = (int16_t) (ADC_values[0]);
 		WRITE_INT16_AS_BYTES(0,mycounter16);
 		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET); // Other_IC_CS pin goes low to start conversion
 		HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)IC_tx, (uint8_t *)IC_rx, IC_BUFFER_SIZE);
-		mycounter16In = READ_BYTES_AS_INT16(2);
-	  mycounter16In = READ_BYTES_AS_INT16(0);
-		Write7SegWave(mycounter16In >> 4);
-		
-		if (mycounter16In != prevcounterOut)
-		{
-			stopME = 1;
-		}
-		prevcounterOut = mycounter16; 
-		mycounter16++;
-	}
+		//mycounter16In = READ_BYTES_AS_INT16(2);
+	  
+}
 	return 0;
 	
 	//mycounter16++;
@@ -1016,13 +1034,15 @@ float READ_BYTES_AS_FLOAT16(uint8_t byteNum) {
 
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
 { 
-	pullUpOtherChipCS();	
+	//pullUpOtherChipCS();	
+	
 	fillBufferWithInputProcess(1);
 }
 
 void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
 {
-  pullUpOtherChipCS();	  
+  //pullUpOtherChipCS();	  
+		
 	fillBufferWithInputProcess(0);
 }
 
@@ -1064,13 +1084,24 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 	//if it's SPI1, that's the other stm32f4 IC, ready for new data.
 	if(hspi == &hspi1)
 	{
-		int16_t dummy1 = 0;
+			int16_t dummy1 = 0;
      uint16_t dummy2 = 0;	
 		//HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)IC_tx, (uint8_t *)IC_rx, IC_BUFFER_SIZE, IC_TIMEOUT);
 		//nothing should be necessary, since the buffer should be circular
 		//HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)IC_tx, (uint8_t *)IC_rx, IC_BUFFER_SIZE);
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET); // Other IC CS pin goes high to stop conversion
-
+	hspi1.State = HAL_SPI_STATE_READY;	
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET); // Other IC CS pin goes high to stop conversion
+		
+		mycounter16In = READ_BYTES_AS_INT16(0);
+		//Write7SegWave(mycounter16In);
+		
+		if (mycounter16In != prevcounterOut)
+		{
+			stopME = 1;
+		}
+		prevcounterOut = mycounter16; 
+		mycounter16++;
+		
       //OtherICBufferIndexNum = 0;
 	    //start_Other_IC_Communication();
 		readAndWriteOtherChip(dummy1, dummy2);
@@ -1128,7 +1159,7 @@ void ADC_Read(void)
 		knobnum = ADC_in[0] >> 4;
 		knobval12bit = (ADC_in[1] | ((ADC_in[0] & 15) << 8));
 		ADC_values[knobnum] = knobval12bit;
-	  //Write7SegWave((uint8_t)(ADC_values[0] >> 5));
+	  Write7SegWave((uint8_t)(ADC_values[0] >> 5));
 		whichKnob++;
 		if (whichKnob > 5)
 		{
@@ -1140,12 +1171,16 @@ void ADC_Read(void)
 		}
 		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET); // ADC CS pin goes low to initiate conversion
 		//HAL_Delay(1);
+		/*
 		while(HAL_SPI_GetState(&hspi2) != HAL_SPI_STATE_READY)
 		{
 			;
 		}
+		*/
 		HAL_SPI_TransmitReceive_DMA(&hspi2, (uint8_t *)ADC_out, (uint8_t *)ADC_in, ADC_BUFFERSIZE);
 }
+
+
 
 void start_Other_IC_Communication(void)
 {
@@ -1157,10 +1192,15 @@ void start_Other_IC_Communication(void)
 	HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)IC_tx, (uint8_t *)IC_rx, IC_BUFFER_SIZE);
 }
 
+
+
+
  void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
  {
 		Write7SegWave(HAL_SPI_GetError(hspi));
  }
+
+
  
 
 

@@ -1,7 +1,6 @@
 /**
   ******************************************************************************
   * File Name          : I2C.c
-  * Date               : 17/06/2015 15:06:03
   * Description        : This file provides code for the configuration
   *                      of the I2C instances.
   ******************************************************************************
@@ -77,10 +76,17 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
     PB6     ------> I2C1_SCL
     PB7     ------> I2C1_SDA 
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_7;
+    GPIO_InitStruct.Pin = GPIO_PIN_6;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_7;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -104,10 +110,10 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
     __HAL_LINKDMA(hi2c,hdmarx,hdma_i2c1_rx);
 
     /* Peripheral interrupt init*/
-    HAL_NVIC_SetPriority(I2C1_ER_IRQn, 0, 15);
-    HAL_NVIC_EnableIRQ(I2C1_ER_IRQn);
     HAL_NVIC_SetPriority(I2C1_EV_IRQn, 0, 13);
     HAL_NVIC_EnableIRQ(I2C1_EV_IRQn);
+    HAL_NVIC_SetPriority(I2C1_ER_IRQn, 0, 15);
+    HAL_NVIC_EnableIRQ(I2C1_ER_IRQn);
   /* USER CODE BEGIN I2C1_MspInit 1 */
 
   /* USER CODE END I2C1_MspInit 1 */
@@ -135,9 +141,9 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
     HAL_DMA_DeInit(hi2c->hdmarx);
 
     /* Peripheral interrupt Deinit*/
-    HAL_NVIC_DisableIRQ(I2C1_ER_IRQn);
-
     HAL_NVIC_DisableIRQ(I2C1_EV_IRQn);
+
+    HAL_NVIC_DisableIRQ(I2C1_ER_IRQn);
 
   /* USER CODE BEGIN I2C1_MspDeInit 1 */
 

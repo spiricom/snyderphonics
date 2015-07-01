@@ -1,7 +1,6 @@
 /**
   ******************************************************************************
   * @file    stm32f4xx_it.h
-  * @date    17/06/2015 15:06:05
   * @brief   This file contains the headers of the interrupt handlers.
   ******************************************************************************
   *
@@ -46,28 +45,28 @@
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 
+void NMI_Handler(void);
+void MemManage_Handler(void);
+void BusFault_Handler(void);
+void UsageFault_Handler(void);
+void DebugMon_Handler(void);
+void SysTick_Handler(void);
+void RCC_IRQHandler(void);
+void DMA1_Stream0_IRQHandler(void);
+void DMA1_Stream3_IRQHandler(void);
+void DMA1_Stream4_IRQHandler(void);
+void DMA1_Stream5_IRQHandler(void);
+void ADC_IRQHandler(void);
+void I2C1_EV_IRQHandler(void);
+void I2C1_ER_IRQHandler(void);
+void SPI1_IRQHandler(void);
+void SPI2_IRQHandler(void);
+void DMA1_Stream7_IRQHandler(void);
+void SPI3_IRQHandler(void);
+void DMA2_Stream0_IRQHandler(void);
 void DMA2_Stream3_IRQHandler(void);
 void OTG_FS_IRQHandler(void);
-void DMA1_Stream0_IRQHandler(void);
-void BusFault_Handler(void);
-void SysTick_Handler(void);
-void SPI3_IRQHandler(void);
-void SPI2_IRQHandler(void);
-void I2C1_ER_IRQHandler(void);
 void HASH_RNG_IRQHandler(void);
-void I2C1_EV_IRQHandler(void);
-void DMA2_Stream0_IRQHandler(void);
-void ADC_IRQHandler(void);
-void DebugMon_Handler(void);
-void DMA1_Stream3_IRQHandler(void);
-void UsageFault_Handler(void);
-void DMA1_Stream4_IRQHandler(void);
-void MemManage_Handler(void);
-void DMA1_Stream5_IRQHandler(void);
-void DMA1_Stream7_IRQHandler(void);
-void SPI1_IRQHandler(void);
-void NMI_Handler(void);
-void RCC_IRQHandler(void);
 
 #ifdef __cplusplus
 }
