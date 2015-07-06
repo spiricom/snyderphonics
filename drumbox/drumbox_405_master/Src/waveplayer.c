@@ -247,24 +247,24 @@ void StartAudio(void)
 	// time to set up the I2S driver to send audio data to the codec (and retrieve input as well)	
 	myStatus = HAL_I2SEx_TransmitReceive_DMA(&hi2s3, (uint16_t*)&Send_Buffer[0], (uint16_t*)&Receive_Buffer[0], AUDIO_BUFFER_SIZE);
   
-	readAndWriteOtherChip(dummy1, dummy2);
-	HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)IC_tx, (uint8_t *)IC_rx, IC_BUFFER_SIZE);
-	//ADC_Read();
+	// readAndWriteOtherChip(dummy1, dummy2);
+	// HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)IC_tx, (uint8_t *)IC_rx, IC_BUFFER_SIZE);
+	// ADC_Read();
 
   while(1)
 	{
-		//if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_SET)
-		//{
-			//getXY_Touchpad();
-			//Write7SegWave((myTouchpad[0] / 4));
-		  spi1tx = HAL_DMA_GetState(&hdma_spi1_tx);
-		  mess = spi1tx;
-		  spi1rx = HAL_DMA_GetState(&hdma_spi1_rx);
-		  mess = spi1rx;
-		
-		
-			//ADC_Read();
-		//}
+//		//if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_SET)
+//		//{
+//			//getXY_Touchpad();
+//			//Write7SegWave((myTouchpad[0] / 4));
+//		  spi1tx = HAL_DMA_GetState(&hdma_spi1_tx);
+//		  mess = spi1tx;
+//		  spi1rx = HAL_DMA_GetState(&hdma_spi1_rx);
+//		  mess = spi1rx;
+//		
+//		
+//			//ADC_Read();
+//		//}
 	}
 	/*
 	while(1)
@@ -329,7 +329,7 @@ void fillBufferWithInputProcess(uint8_t buffer_offset)
 					{
 						if ((i & 1) == 0)
 						{
-							//testTemp = myProcess(Receive_Buffer[i] * INV_TWO_TO_15) * TWO_TO_15;
+							testTemp = myProcess(Receive_Buffer[i] * INV_TWO_TO_15) * TWO_TO_15;
 							//int16_t OtherChip = readAndWriteOtherChip(Receive_Buffer[i], OtherICBufferIndexNum);
 							current_sample = testTemp;
 							//OtherICBufferIndexNum++;
@@ -344,7 +344,7 @@ void fillBufferWithInputProcess(uint8_t buffer_offset)
 					{
 						if ((i & 1) == 0)
 						{
- 							//testTemp = myProcess((float) (Receive_Buffer[HALF_BUFFER_SIZE + i] * INV_TWO_TO_15)) * TWO_TO_15;
+ 							testTemp = myProcess((float) (Receive_Buffer[HALF_BUFFER_SIZE + i] * INV_TWO_TO_15)) * TWO_TO_15;
 							//int16_t OtherChip = readAndWriteOtherChip(Receive_Buffer[HALF_BUFFER_SIZE + i], OtherICBufferIndexNum);
 							current_sample = testTemp;
 							//OtherICBufferIndexNum++;
@@ -373,7 +373,8 @@ float myProcess(float AudioIn)
 	scalar[1] =( powf( 0.5f, (1.0f/((((float)ADC_values[5]) * .25f) * INV_TWO_TO_12 * (float)SAMPLE_RATE))));
 	
 	//set frequency of sine and delay
-	phaseInc = (MtoF((currParamValue[ADC_FREQ]) * 109.0f + 25.f)) * INV_SAMPLE_RATE;
+	phaseInc = MtoF(60.f) * INV_SAMPLE_RATE;
+	// phaseInc = (MtoF((currParamValue[ADC_FREQ]) * 109.0f + 25.f)) * INV_SAMPLE_RATE;
 	setDelay(currParamValue[ADC_DELAY]);
 	
 	AudioGateVal = ((float)ADC_values[3]) * INV_TWO_TO_12 * 0.2f;
@@ -386,12 +387,14 @@ float myProcess(float AudioIn)
 	envGain[0] = adc_env_detector(AudioIn, 0);
   envGain[1] = adc_env_detector(AudioIn, 1);
 	
-	sample = ((KSprocess(AudioIn) * 0.55f) + (AudioIn * 0.6f));
-	sample += (0.33f * ((wavetableSynth() * envGain[0]) + (((pinkNoise() * 1.0f) + whiteNoise() * .13f)* envGain[1])));
-	//sample += (0.8f * wavetableSynth());
+	//sample = ((KSprocess(AudioIn) * 0.55f) + (AudioIn * 0.6f));
+	// sample += (0.33f * ((wavetableSynth() * envGain[0]) + (((pinkNoise() * 1.0f) + whiteNoise() * .13f)* envGain[1])));
+	// sample += (0.8f * wavetableSynth());
+	sample =  AudioIn;
 	//sample = pinkNoise() * 0.1f;
-  sample = highpass3(FastTanh2Like4Term(sample * gainBoost));
+  //sample = highpass3(FastTanh2Like4Term(sample * gainBoost));
 	//sample = highpass(shaper(sample));
+	// sample = whiteNoise();
 
 	//update Paramesters
 
@@ -1040,7 +1043,7 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
 { 
 	//pullUpOtherChipCS();	
 	
-	//fillBufferWithInputProcess(1);
+	fillBufferWithInputProcess(1);
 	//myStatus = HAL_I2SEx_TransmitReceive_DMA(&hi2s3, (uint16_t*)&Send_Buffer[0], (uint16_t*)&Receive_Buffer[0], AUDIO_BUFFER_SIZE);
 }
 
@@ -1048,7 +1051,7 @@ void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
 {
   //pullUpOtherChipCS();	  
 		
-	//fillBufferWithInputProcess(0);
+	fillBufferWithInputProcess(0);
 	//myStatus = HAL_I2SEx_TransmitReceive_DMA(&hi2s3, (uint16_t*)&Send_Buffer[0], (uint16_t*)&Receive_Buffer[0], AUDIO_BUFFER_SIZE);
 }
 

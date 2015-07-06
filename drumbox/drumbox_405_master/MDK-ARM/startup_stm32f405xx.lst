@@ -854,10 +854,13 @@ ARM Macro Assembler    Page 14
               00000000 
 Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M4.fp --apcs=int
 erwork --depend="drumbox_405 configuration\startup_stm32f405xx.d" -o"drumbox_40
-5 configuration\startup_stm32f405xx.o" -IC:\Keil_v5\ARM\RV31\INC -IC:\Keil_v5\A
-RM\CMSIS\Include --predefine="__MICROLIB SETA 1" --predefine="__UVISION_VERSION
- SETA 514" --list=startup_stm32f405xx.lst ..\Drivers\CMSIS\Device\ST\STM32F4xx\
-Source\Templates\arm\startup_stm32f405xx.s
+5 configuration\startup_stm32f405xx.o" -IC:\Users\roda\Documents\GitHub\snyderp
+honics\drumbox\drumbox_405_master\MDK-ARM\RTE -IC:\Keil_v5\ARM\PACK\ARM\CMSIS\4
+.3.0\CMSIS\Include -IC:\Keil_v5\ARM\PACK\Keil\STM32F4xx_DFP\2.4.0\Drivers\CMSIS
+\Device\ST\STM32F4xx\Include --predefine="__MICROLIB SETA 1" --predefine="__UVI
+SION_VERSION SETA 515" --predefine="_RTE_ SETA 1" --predefine="STM32F405xx SETA
+ 1" --list=startup_stm32f405xx.lst ..\Drivers\CMSIS\Device\ST\STM32F4xx\Source\
+Templates\arm\startup_stm32f405xx.s
 
 
 
@@ -2233,4 +2236,4 @@ Symbol: __main
 \arm\startup_stm32f405xx.s
 Comment: __main used once
 2 symbols
-440 symbols in table
+442 symbols in table
