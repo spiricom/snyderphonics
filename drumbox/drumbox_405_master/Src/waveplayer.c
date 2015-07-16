@@ -16,6 +16,9 @@ This is the Snyderphonics DrumBox synthesis code.
 #include "main.h"
 #include "spi.h"
 #include "dma.h"
+#include "arm_math.h"
+#include "arm_const_structs.h"
+#include <math.h> 
 
 #define AUDIO_BUFFER_SIZE    4  //four is the lowest number that makes sense -- 2 samples for each computed sample (L/R), and then half buffer fills
 #define HALF_BUFFER_SIZE      (AUDIO_BUFFER_SIZE/2)
@@ -28,6 +31,11 @@ This is the Snyderphonics DrumBox synthesis code.
 #define ADC_FEEDBACK 0
 #define ADC_FREQ 1
 #define ADC_DELAY 2
+
+// FFT stuff
+#define FFT_BUFFER_SIZE 16 //must be one of these values: [16,32,64,128,256,512,1024,2048,4096]
+
+
 
 
 /* External variables --------------------------------------------------------*/
@@ -104,6 +112,18 @@ float FeedbackLookup3[FEEDBACK_LOOKUP] = { 0.0f, 0.999f, .9999f, .99999f, 1.00f 
 float FeedbackLookup4[FEEDBACK_LOOKUP] = { 0.0f, 0.9999f, .99999f, .999999f, 1.00f };
 //float DelayLookup[DELAY_LOOKUP] = { 16000.f, 1850.f, 180.f, 40.f };
 float DelayLookup[DELAY_LOOKUP] = { 50.f, 180.f, 1400.f, 16361.f };
+
+// for FFT
+static uint32_t ifftFlag = 0;
+static uint32_t doBitReverse = 1;
+static float32_t fftInput[FFT_BUFFER_SIZE * 2];
+static float32_t fftOutput[FFT_BUFFER_SIZE/2];
+static uint32_t curFftIndex = 0;
+static uint32_t lastFftIndex = 0;
+static uint32_t maxIndex;
+static int fftFlag1 = 0;
+static int fftFlag2 = 0;
+static int fftError = 0;
 
 uint32_t myRandomNumber = 0;
 
@@ -195,6 +215,12 @@ void ADC_Read(void);
 float shaper(float);
 double clipMe(double n, double lower, double upper);
 
+float newSinGen(void);
+void doComplexFft(float32_t * inputBuffer);
+void doRealFft(float32_t * inputBuffer);
+void fftDisplayMaxBin(void);
+float computeCentroid(float32_t * inputBuffer, int length);
+void doRealFastFft(float32_t * inputBuffer);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -221,7 +247,6 @@ uint16_t mess = 0;
 
 void StartAudio(void)
 { 
-
 	int16_t dummy1 = 0;
 	uint16_t dummy2 = 0;	
 
@@ -253,6 +278,27 @@ void StartAudio(void)
 
   while(1)
 	{
+		// check to see if either half of the buffer is ready for processing
+		if (fftFlag1 || fftFlag2)
+		{
+			int offset = 0;
+			if (fftFlag2) 
+			{
+				offset = FFT_BUFFER_SIZE;
+			}
+			fftFlag1 = 0;
+			fftFlag2 = 0;
+			doComplexFft(fftInput + offset);
+			// Check to make sure that the pointer hasn't come all the way around and is overwriting our FFT results
+			if (curFftIndex > lastFftIndex + FFT_BUFFER_SIZE)
+			{
+				fftError = 1;
+			} else 
+			{
+			fftDisplayMaxBin();
+			}
+		}
+		
 //		//if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_SET)
 //		//{
 //			//getXY_Touchpad();
@@ -317,6 +363,8 @@ float testTemp;
 int whichknob = 0;
 
 //uint16_t OtherICBufferIndexNum = 0;
+
+// Fills the buffers
 void fillBufferWithInputProcess(uint8_t buffer_offset)
 {
 			uint16_t i = 0;
@@ -363,11 +411,28 @@ void fillBufferWithInputProcess(uint8_t buffer_offset)
 			*/
 }
 
+// Main audio processing function
 float myProcess(float AudioIn)
 {
 	float sample;
   float envGain[2];
-
+	
+	// Fill the fft buffer
+	fftInput[curFftIndex % (FFT_BUFFER_SIZE*2)] = (float32_t) AudioIn;
+	curFftIndex++;
+	
+	// if half of the buffer is filled, set a flag
+	if (curFftIndex % (FFT_BUFFER_SIZE*2) == FFT_BUFFER_SIZE) 
+	{
+		fftFlag1 = 1;
+		lastFftIndex = curFftIndex;
+	}
+	if (curFftIndex % (FFT_BUFFER_SIZE*2) == 0 && FFT_BUFFER_SIZE > 1)
+	{
+		fftFlag2 = 1;;
+		lastFftIndex = curFftIndex;
+	}
+	
 	
 	scalar[0] =( powf( 0.5f, (1.0f/((((float)ADC_values[4]) * .5f)* INV_TWO_TO_12 * (float)SAMPLE_RATE))));
 	scalar[1] =( powf( 0.5f, (1.0f/((((float)ADC_values[5]) * .25f) * INV_TWO_TO_12 * (float)SAMPLE_RATE))));
@@ -379,10 +444,10 @@ float myProcess(float AudioIn)
 	
 	AudioGateVal = ((float)ADC_values[3]) * INV_TWO_TO_12 * 0.2f;
 	env_detector_thresh = AudioGateVal;
-	if (AudioIn < AudioGateVal)
-	{
-		AudioIn = 0.f;
-	}
+	//	if (AudioIn < AudioGateVal)
+	//	{
+	//		AudioIn = 0.f;
+	//	}
 	//float OtherChip = readAndWriteOtherChip(AudioIn, 0);
 	envGain[0] = adc_env_detector(AudioIn, 0);
   envGain[1] = adc_env_detector(AudioIn, 1);
@@ -390,11 +455,12 @@ float myProcess(float AudioIn)
 	//sample = ((KSprocess(AudioIn) * 0.55f) + (AudioIn * 0.6f));
 	// sample += (0.33f * ((wavetableSynth() * envGain[0]) + (((pinkNoise() * 1.0f) + whiteNoise() * .13f)* envGain[1])));
 	// sample += (0.8f * wavetableSynth());
-	sample =  AudioIn;
 	//sample = pinkNoise() * 0.1f;
   //sample = highpass3(FastTanh2Like4Term(sample * gainBoost));
 	//sample = highpass(shaper(sample));
 	// sample = whiteNoise();
+	sample =  AudioIn;
+	// sample = newSinGen();
 
 	//update Paramesters
 
@@ -888,6 +954,8 @@ float shaper(float input)
 	return shaperOut;
 }
 
+
+//Write to LCD
 void Write7SegWave(uint8_t value)
 {
 	uint8_t Digits[2];
@@ -1225,3 +1293,98 @@ void getXY_Touchpad(void) {
 	//HAL_I2C_Master_Receive_DMA(&hi2c1, 18, myTouchpad, i2cDataSize2);
 }
 
+
+
+/*---------------------------------------------Reid's--------------------------------------------------*/
+
+float newSinGen(void) 
+{
+	updatePhase();
+	return (float) arm_sin_f32((float32_t) phasor * 2 * PI );
+}
+
+void doComplexFft(float32_t * inputBuffer)
+{
+	const arm_cfft_instance_f32 * fftParams;
+	switch (FFT_BUFFER_SIZE)
+	{
+		case 16:
+			fftParams = &arm_cfft_sR_f32_len16;
+			break;
+		case 32:
+			fftParams = &arm_cfft_sR_f32_len32;
+			break;
+		case 64:
+			fftParams = &arm_cfft_sR_f32_len64;
+			break;
+		case 128:
+			fftParams = &arm_cfft_sR_f32_len128;
+			break;
+		case 256:
+			fftParams = &arm_cfft_sR_f32_len256;
+			break;
+		case 512:
+			fftParams = &arm_cfft_sR_f32_len512;
+			break;
+		case 1024:
+			fftParams = &arm_cfft_sR_f32_len1024;
+			break;
+		case 2048:
+			fftParams = &arm_cfft_sR_f32_len2048;
+			break;
+		case 4096:
+			fftParams = &arm_cfft_sR_f32_len4096;
+			break;
+		default:
+			break;
+			// How do we do error catching? Don't know. 
+	}
+	// Compute the fft. Processing occurs in place.
+	arm_cfft_f32(fftParams, inputBuffer, ifftFlag, doBitReverse);
+	// Compute the magnitudes into the output buffer
+	arm_cmplx_mag_f32(inputBuffer, fftOutput, FFT_BUFFER_SIZE/2);
+}
+
+//static arm_rfft_fast_instance_f32 rfft_instance;
+//static int computedParams = 0;
+//void doRealFastFft(float32_t * inputBuffer)
+//{
+//	if(!computedParams) 
+//	{
+//		arm_rfft_fast_init_f32(&rfft_instance, FFT_BUFFER_SIZE);
+//		computedParams = 1;
+//	}
+//	arm_rfft_fast_f32(&rfft_instance, inputBuffer, fftOutput, 0);
+//}
+
+
+// Write the index of the fft bin with the highest value to the display
+// This is an intermediate function to see if stuff is working
+	uint8_t toDisplay;
+void fftDisplayMaxBin(void)
+{
+	float32_t maxValue;
+	// uint32_t maxIndex;
+	arm_max_f32(fftOutput, FFT_BUFFER_SIZE/2, &maxValue, &maxIndex);
+	
+	if (FFT_BUFFER_SIZE > 100) 
+	{
+		toDisplay = (uint8_t) round(maxIndex / ((float)FFT_BUFFER_SIZE/2) * 100.0f);
+	} else {
+		toDisplay = (uint8_t) maxIndex;
+	}
+	Write7SegWave(toDisplay);
+}
+
+// Returns a float between 0 and 1, indicating the normalized location of the spectral centroid
+float computeCentroid(float32_t * inputBuffer, int length)
+{
+	float upper = 0;
+	float lower = 0;
+	for (int i=0; i<length; i++) 
+	{
+		upper = upper + inputBuffer[i] * (float)i;
+		lower = lower + inputBuffer[i];
+	}
+	return upper / (float)(lower * length);
+}

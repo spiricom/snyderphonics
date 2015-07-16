@@ -44,6 +44,7 @@
 "drumbox_405 configuration\stm32f4xx_hal_flash.o"
 "drumbox_405 configuration\stm32f4xx_hal_pcd_ex.o"
 "drumbox_405 configuration\stm32f4xx_hal_adc_ex.o"
+"C:\Keil_v5\ARM\PACK\ARM\CMSIS\4.3.0\CMSIS\Lib\ARM\arm_cortexM4lf_math.lib"
 --library_type=microlib --strict --scatter "drumbox_405 Configuration\drumbox_405 Configuration.sct"
 --diag_suppress=L6329 --summary_stderr --info summarysizes --map --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers

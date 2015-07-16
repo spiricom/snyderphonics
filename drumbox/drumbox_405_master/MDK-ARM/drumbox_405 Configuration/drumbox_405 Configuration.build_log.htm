@@ -5,7 +5,7 @@
 <h2>Tool Versions:</h2>
 IDE-Version: µVision V5.15
 Copyright (C) 2015 ARM Ltd and ARM Germany GmbH. All rights reserved.
-License Information: Reid Oda, Princeton University, LIC=----
+License Information: Reid Oda, Princeton University, LIC=8VRBX-HHTHN-Z86FH-W2LVS-WVZY4-PV1SJ
  
 Tool Versions:
 Toolchain:       MDK-ARM Standard  Version: 5.15.0
@@ -22,26 +22,30 @@ Dialog DLL:      TCM.DLL V1.14.5.0
  
 <h2>Project:</h2>
 C:\Users\roda\Documents\GitHub\snyderphonics\drumbox\drumbox_405_master\MDK-ARM\drumbox_405.uvprojx
-Project File Date:  07/01/2015
+Project File Date:  07/06/2015
 
 <h2>Output:</h2>
 *** Using Compiler 'V5.05 update 2 (build 169)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'drumbox_405 Configuration'
 compiling waveplayer.c...
-..\Src\waveplayer.c(225): warning:  #177-D: variable "dummy1" was declared but never referenced
+..\Src\waveplayer.c(250): warning:  #177-D: variable "dummy1" was declared but never referenced
         int16_t dummy1 = 0;
-..\Src\waveplayer.c(226): warning:  #177-D: variable "dummy2" was declared but never referenced
+..\Src\waveplayer.c(251): warning:  #177-D: variable "dummy2" was declared but never referenced
         uint16_t dummy2 = 0;    
-..\Src\waveplayer.c(369): warning:  #550-D: variable "envGain" was set but never used
+..\Src\waveplayer.c(418): warning:  #550-D: variable "envGain" was set but never used
     float envGain[2];
-..\Src\waveplayer.c(219): warning:  #177-D: variable "spi1tx" was declared but never referenced
+..\Src\waveplayer.c(1390): warning:  #1-D: last line of file ends without a newline
+  }
+..\Src\waveplayer.c(126): warning:  #550-D: variable "fftError" was set but never used
+  static int fftError = 0;
+..\Src\waveplayer.c(245): warning:  #177-D: variable "spi1tx" was declared but never referenced
         static HAL_DMA_StateTypeDef spi1tx;
-..\Src\waveplayer.c(220): warning:  #177-D: variable "spi1rx" was declared but never referenced
+..\Src\waveplayer.c(246): warning:  #177-D: variable "spi1rx" was declared but never referenced
         static HAL_DMA_StateTypeDef spi1rx;
-..\Src\waveplayer.c: 5 warnings, 0 errors
+..\Src\waveplayer.c: 7 warnings, 0 errors
 linking...
-Program Size: Code=29564 RO-data=760 RW-data=692 ZI-data=71132  
-"drumbox_405 Configuration\drumbox_405 Configuration.axf" - 0 Error(s), 5 Warning(s).
+Program Size: Code=33476 RO-data=944 RW-data=724 ZI-data=71292  
+"drumbox_405 Configuration\drumbox_405 Configuration.axf" - 0 Error(s), 7 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -50,6 +54,7 @@ Package Vendor: ARM
                 ARM::CMSIS:CORE:4.1.0
                 CMSIS (Cortex Microcontroller Software Interface Standard)
    * Component: CORE Version: 4.1.0
+   * Component: DSP Version: 1.4.5
 
 <h2>Collection of Component include folders:</h2>
   C:\Users\roda\Documents\GitHub\snyderphonics\drumbox\drumbox_405_master\MDK-ARM\RTE
@@ -59,6 +64,10 @@ Package Vendor: ARM
 <h2>Collection of Component Files used:</h2>
 
    * Component: ARM::CMSIS:CORE:4.1.0
+
+   * Component: ARM::CMSIS:DSP:1.4.5
+      Include file:  CMSIS\Include\arm_math.h
+      Library file:  CMSIS\Lib\ARM\arm_cortexM4lf_math.lib
 </pre>
 </body>
 </html>
