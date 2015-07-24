@@ -22,30 +22,20 @@ Dialog DLL:      TCM.DLL V1.14.5.0
  
 <h2>Project:</h2>
 C:\Users\roda\Documents\GitHub\snyderphonics\drumbox\drumbox_405_master\MDK-ARM\drumbox_405.uvprojx
-Project File Date:  07/06/2015
+Project File Date:  07/17/2015
 
 <h2>Output:</h2>
 *** Using Compiler 'V5.05 update 2 (build 169)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'drumbox_405 Configuration'
 compiling waveplayer.c...
-..\Src\waveplayer.c(250): warning:  #177-D: variable "dummy1" was declared but never referenced
-        int16_t dummy1 = 0;
-..\Src\waveplayer.c(251): warning:  #177-D: variable "dummy2" was declared but never referenced
-        uint16_t dummy2 = 0;    
-..\Src\waveplayer.c(418): warning:  #550-D: variable "envGain" was set but never used
-    float envGain[2];
-..\Src\waveplayer.c(1390): warning:  #1-D: last line of file ends without a newline
-  }
-..\Src\waveplayer.c(126): warning:  #550-D: variable "fftError" was set but never used
+..\Src\waveplayer.c(1450): warning:  #1-D: last line of file ends without a newline
+  //}
+..\Src\waveplayer.c(131): warning:  #550-D: variable "fftError" was set but never used
   static int fftError = 0;
-..\Src\waveplayer.c(245): warning:  #177-D: variable "spi1tx" was declared but never referenced
-        static HAL_DMA_StateTypeDef spi1tx;
-..\Src\waveplayer.c(246): warning:  #177-D: variable "spi1rx" was declared but never referenced
-        static HAL_DMA_StateTypeDef spi1rx;
-..\Src\waveplayer.c: 7 warnings, 0 errors
+..\Src\waveplayer.c: 2 warnings, 0 errors
 linking...
-Program Size: Code=33476 RO-data=944 RW-data=724 ZI-data=71292  
-"drumbox_405 Configuration\drumbox_405 Configuration.axf" - 0 Error(s), 7 Warning(s).
+Program Size: Code=51368 RO-data=90376 RW-data=852 ZI-data=97900  
+"drumbox_405 Configuration\drumbox_405 Configuration.axf" - 0 Error(s), 2 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -66,8 +56,8 @@ Package Vendor: ARM
    * Component: ARM::CMSIS:CORE:4.1.0
 
    * Component: ARM::CMSIS:DSP:1.4.5
-      Include file:  CMSIS\Include\arm_math.h
       Library file:  CMSIS\Lib\ARM\arm_cortexM4lf_math.lib
+      Include file:  CMSIS\Include\arm_math.h
 </pre>
 </body>
 </html>

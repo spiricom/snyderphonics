@@ -20,7 +20,7 @@ This is the Snyderphonics DrumBox synthesis code.
 #include "arm_const_structs.h"
 #include <math.h> 
 
-#define AUDIO_BUFFER_SIZE    4  //four is the lowest number that makes sense -- 2 samples for each computed sample (L/R), and then half buffer fills
+#define AUDIO_BUFFER_SIZE    8  //four is the lowest number that makes sense -- 2 samples for each computed sample (L/R), and then half buffer fills
 #define HALF_BUFFER_SIZE      (AUDIO_BUFFER_SIZE/2)
 #define IC_BUFFER_SIZE 4
 #define HALF_IC_BUFFER_SIZE (IC_BUFFER_SIZE / 2)
@@ -33,7 +33,9 @@ This is the Snyderphonics DrumBox synthesis code.
 #define ADC_DELAY 2
 
 // FFT stuff
-#define FFT_BUFFER_SIZE 16 //must be one of these values: [16,32,64,128,256,512,1024,2048,4096]
+#define FFT_SIZE 1024 //must be one of these values: [16,32,64,128,256,512,1024,2048,4096]
+											//the actual number of output bins is FFT_SIZE/2 because the input is 
+											//treated as complex pairs
 
 
 
@@ -71,7 +73,7 @@ float historyCrossfade = 0.f;
 int crossfade_count;
 float	our_tempdelay = 100.f;
 float	our_lastdelay = 100.f;
-	const float qm1 = 1.f / 0.33f;
+const float qm1 = 1.f / 0.33f;
 float	envOutput[3] = {0.0f};
 float	envGain[3] = {0.0f};
 float env_detector_thresh = .05f;
@@ -116,14 +118,20 @@ float DelayLookup[DELAY_LOOKUP] = { 50.f, 180.f, 1400.f, 16361.f };
 // for FFT
 static uint32_t ifftFlag = 0;
 static uint32_t doBitReverse = 1;
-static float32_t fftInput[FFT_BUFFER_SIZE * 2];
-static float32_t fftOutput[FFT_BUFFER_SIZE/2];
+static const arm_cfft_instance_f32 * fftParams;
+static float32_t fftInput[FFT_SIZE * 4];
+static float32_t hannWindow[FFT_SIZE *2];
+static float32_t fftOutput[FFT_SIZE/2];
 static uint32_t curFftIndex = 0;
 static uint32_t lastFftIndex = 0;
 static uint32_t maxIndex;
 static int fftFlag1 = 0;
 static int fftFlag2 = 0;
+static int fftDone = 1;
 static int fftError = 0;
+static float centroid;
+
+
 
 uint32_t myRandomNumber = 0;
 
@@ -218,9 +226,14 @@ double clipMe(double n, double lower, double upper);
 float newSinGen(void);
 void doComplexFft(float32_t * inputBuffer);
 void doRealFft(float32_t * inputBuffer);
+void doRealFft(float32_t * inputBuffer);
 void fftDisplayMaxBin(void);
-float computeCentroid(float32_t * inputBuffer, int length);
+float computeCentroid(void);
 void doRealFastFft(float32_t * inputBuffer);
+void setPhasorFreq(float newFreq);
+float fftBin2Freq(float index);
+void sinTrackMaxFftBin(void);
+void generateHannWindow(void);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -242,13 +255,13 @@ void changePhaseInc(float freq)
 }
 
 uint16_t mess = 0;
-	static HAL_DMA_StateTypeDef spi1tx;
-	static HAL_DMA_StateTypeDef spi1rx;
+//	static HAL_DMA_StateTypeDef spi1tx;
+//	static HAL_DMA_StateTypeDef spi1rx;
 
 void StartAudio(void)
 { 
-	int16_t dummy1 = 0;
-	uint16_t dummy2 = 0;	
+//	int16_t dummy1 = 0;
+//	uint16_t dummy2 = 0;	
 
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET); 
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET); // ADC CS pin goes high to make sure it's not selected
@@ -259,6 +272,7 @@ void StartAudio(void)
 	//HAL_Delay(100);
 	//now to send all the necessary messages to the codec
 	AudioCodec_init();
+	generateHannWindow();
 	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET); 
 	
 	//MX_SPI1_Init();
@@ -284,19 +298,19 @@ void StartAudio(void)
 			int offset = 0;
 			if (fftFlag2) 
 			{
-				offset = FFT_BUFFER_SIZE;
+				offset = FFT_SIZE * 2;
 			}
+			
 			fftFlag1 = 0;
 			fftFlag2 = 0;
 			doComplexFft(fftInput + offset);
-			// Check to make sure that the pointer hasn't come all the way around and is overwriting our FFT results
-			if (curFftIndex > lastFftIndex + FFT_BUFFER_SIZE)
-			{
-				fftError = 1;
-			} else 
-			{
+			centroid = computeCentroid();
+			changePhaseInc(fftBin2Freq(centroid));
+			
+//			sinTrackMaxFftBin();
+			
 			fftDisplayMaxBin();
-			}
+			
 		}
 		
 //		//if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_SET)
@@ -415,21 +429,30 @@ void fillBufferWithInputProcess(uint8_t buffer_offset)
 float myProcess(float AudioIn)
 {
 	float sample;
-  float envGain[2];
+//  float envGain[2];
+	
+	
+	// Check to make sure that the pointer hasn't come all the way around and is overwriting our FFT results
+	if (curFftIndex > lastFftIndex + FFT_SIZE)
+	{
+		fftError = 1;
+//		printf("%d",fftError); //does nothing, this is to suppress a warning
+	}
 	
 	// Fill the fft buffer
-	fftInput[curFftIndex % (FFT_BUFFER_SIZE*2)] = (float32_t) AudioIn;
+	fftInput[curFftIndex % (FFT_SIZE*4)] = (float32_t) AudioIn;
 	curFftIndex++;
+
 	
-	// if half of the buffer is filled, set a flag
-	if (curFftIndex % (FFT_BUFFER_SIZE*2) == FFT_BUFFER_SIZE) 
+	// if half of the buffer is filled, copy and set the fftFlag indicating a new buffer is ready
+	if ((curFftIndex % (FFT_SIZE*4) == FFT_SIZE*2) && fftDone) 
 	{
 		fftFlag1 = 1;
 		lastFftIndex = curFftIndex;
 	}
-	if (curFftIndex % (FFT_BUFFER_SIZE*2) == 0 && FFT_BUFFER_SIZE > 1)
+	if ((curFftIndex % (FFT_SIZE*4) == 0) && FFT_SIZE > 1 && fftDone)
 	{
-		fftFlag2 = 1;;
+		fftFlag2 = 1;
 		lastFftIndex = curFftIndex;
 	}
 	
@@ -438,7 +461,9 @@ float myProcess(float AudioIn)
 	scalar[1] =( powf( 0.5f, (1.0f/((((float)ADC_values[5]) * .25f) * INV_TWO_TO_12 * (float)SAMPLE_RATE))));
 	
 	//set frequency of sine and delay
-	phaseInc = MtoF(60.f) * INV_SAMPLE_RATE;
+	//phaseInc = MtoF(60.f) * INV_SAMPLE_RATE;
+
+	
 	// phaseInc = (MtoF((currParamValue[ADC_FREQ]) * 109.0f + 25.f)) * INV_SAMPLE_RATE;
 	setDelay(currParamValue[ADC_DELAY]);
 	
@@ -449,8 +474,8 @@ float myProcess(float AudioIn)
 	//		AudioIn = 0.f;
 	//	}
 	//float OtherChip = readAndWriteOtherChip(AudioIn, 0);
-	envGain[0] = adc_env_detector(AudioIn, 0);
-  envGain[1] = adc_env_detector(AudioIn, 1);
+//	envGain[0] = adc_env_detector(AudioIn, 0);
+//  envGain[1] = adc_env_detector(AudioIn, 1);
 	
 	//sample = ((KSprocess(AudioIn) * 0.55f) + (AudioIn * 0.6f));
 	// sample += (0.33f * ((wavetableSynth() * envGain[0]) + (((pinkNoise() * 1.0f) + whiteNoise() * .13f)* envGain[1])));
@@ -459,11 +484,11 @@ float myProcess(float AudioIn)
   //sample = highpass3(FastTanh2Like4Term(sample * gainBoost));
 	//sample = highpass(shaper(sample));
 	// sample = whiteNoise();
-	sample =  AudioIn;
-	// sample = newSinGen();
+	// sample = AudioIn;
+	float alpha = .5f;
+	sample =  AudioIn*(1-alpha) + newSinGen()*alpha;
 
-	//update Paramesters
-
+	//update Parameters
 	if ((currParamValue[m] >= destParamValue[m]) && (dirParamInc[m] == 1)) 
 	{
 		mParamInc[m] = 0.0f;
@@ -1161,8 +1186,8 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 	//if it's SPI1, that's the other stm32f4 IC, ready for new data.
 	if(hspi == &hspi1)
 	{
-			int16_t dummy1 = 0;
-     uint16_t dummy2 = 0;	
+//			int16_t dummy1 = 0;
+//     uint16_t dummy2 = 0;	
 		//HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)IC_tx, (uint8_t *)IC_rx, IC_BUFFER_SIZE, IC_TIMEOUT);
 		//nothing should be necessary, since the buffer should be circular
 		//HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)IC_tx, (uint8_t *)IC_rx, IC_BUFFER_SIZE);
@@ -1181,7 +1206,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 		
       //OtherICBufferIndexNum = 0;
 	    //start_Other_IC_Communication();
-		readAndWriteOtherChip(dummy1, dummy2);
+//		readAndWriteOtherChip(dummy1, dummy2);
 		//for (int i = 0; i < HALF_IC_BUFFER_SIZE; i++)
 		//{
 		//	IC_tx[i + HALF_IC_BUFFER_SIZE] = ICbufferTx[i + HALF_IC_BUFFER_SIZE];
@@ -1300,13 +1325,12 @@ void getXY_Touchpad(void) {
 float newSinGen(void) 
 {
 	updatePhase();
-	return (float) arm_sin_f32((float32_t) phasor * 2 * PI );
+	return (float) arm_sin_f32((float32_t) phasor * PI );
 }
 
 void doComplexFft(float32_t * inputBuffer)
 {
-	const arm_cfft_instance_f32 * fftParams;
-	switch (FFT_BUFFER_SIZE)
+	switch (FFT_SIZE)
 	{
 		case 16:
 			fftParams = &arm_cfft_sR_f32_len16;
@@ -1340,22 +1364,17 @@ void doComplexFft(float32_t * inputBuffer)
 			// How do we do error catching? Don't know. 
 	}
 	// Compute the fft. Processing occurs in place.
+	fftDone = 0;
+	// Apply the hannWindow
+	for (int i = 0; i < FFT_SIZE*2; i++)
+	{
+		inputBuffer[i] = hannWindow[i] * inputBuffer[i];
+	}
 	arm_cfft_f32(fftParams, inputBuffer, ifftFlag, doBitReverse);
 	// Compute the magnitudes into the output buffer
-	arm_cmplx_mag_f32(inputBuffer, fftOutput, FFT_BUFFER_SIZE/2);
+	arm_cmplx_mag_f32(inputBuffer, fftOutput, FFT_SIZE/2);
+	fftDone = 1;
 }
-
-//static arm_rfft_fast_instance_f32 rfft_instance;
-//static int computedParams = 0;
-//void doRealFastFft(float32_t * inputBuffer)
-//{
-//	if(!computedParams) 
-//	{
-//		arm_rfft_fast_init_f32(&rfft_instance, FFT_BUFFER_SIZE);
-//		computedParams = 1;
-//	}
-//	arm_rfft_fast_f32(&rfft_instance, inputBuffer, fftOutput, 0);
-//}
 
 
 // Write the index of the fft bin with the highest value to the display
@@ -1365,26 +1384,58 @@ void fftDisplayMaxBin(void)
 {
 	float32_t maxValue;
 	// uint32_t maxIndex;
-	arm_max_f32(fftOutput, FFT_BUFFER_SIZE/2, &maxValue, &maxIndex);
+	arm_max_f32(fftOutput, FFT_SIZE/2, &maxValue, &maxIndex);
 	
-	if (FFT_BUFFER_SIZE > 100) 
+	if (FFT_SIZE/2 > 100) 
 	{
-		toDisplay = (uint8_t) round(maxIndex / ((float)FFT_BUFFER_SIZE/2) * 100.0f);
+		toDisplay = (uint8_t) round(maxIndex / ((float)FFT_SIZE/2) * 100.0f);
 	} else {
 		toDisplay = (uint8_t) maxIndex;
 	}
 	Write7SegWave(toDisplay);
 }
 
-// Returns a float between 0 and 1, indicating the normalized location of the spectral centroid
-float computeCentroid(float32_t * inputBuffer, int length)
+// Returns the bin number of the spectral centroid
+float computeCentroid(void)
 {
 	float upper = 0;
 	float lower = 0;
-	for (int i=0; i<length; i++) 
+	for (int i=0; i < FFT_SIZE/2; i++) 
 	{
-		upper = upper + inputBuffer[i] * (float)i;
-		lower = lower + inputBuffer[i];
+		upper = upper + fftOutput[i] * (float)i;
+		lower = lower + fftOutput[i];
 	}
-	return upper / (float)(lower * length);
+	return upper / (float)lower;
+}
+
+// Set sine wave to new frequency
+//void setPhasorFreq(float newFreq)
+//{
+//	phaseInc = newFreq * INV_SAMPLE_RATE;
+//}
+
+// Map FFT bin index to frequency
+float fftBin2Freq(float index)
+{
+	float baseFreq = SAMPLE_RATE / (FFT_SIZE/2.f);
+	return baseFreq * index / 4;
+}
+
+// Have the phasor track the fft bin with highest energy
+void sinTrackMaxFftBin(void) 
+{
+	float32_t maxValue;
+	arm_max_f32(fftOutput, FFT_SIZE/2, &maxValue, &maxIndex);
+	
+	changePhaseInc(fftBin2Freq(maxIndex));
+}
+
+// Populate Hann Window
+void generateHannWindow(void)
+{
+	for (int i = 0; i < FFT_SIZE; i++) {
+		float32_t coef = 0.5 * (1 - cos(2*PI*i/(FFT_SIZE-1)));
+    hannWindow[2*i] = coef;
+		hannWindow[2*i+1] = coef;
+	}
 }
